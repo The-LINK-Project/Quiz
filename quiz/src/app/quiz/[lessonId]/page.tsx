@@ -1,17 +1,18 @@
-// /app/quiz/[lessonId]/page.tsx
 'use client';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { getQuizByLessonId } from "@/lib/actions/quizActions";
+import { saveQuizResult } from "@/lib/actions/resultsActions";
+import type {Document} from "mongoose";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import type { Document } from "mongoose";
-
-interface Question {
+interface Question{
   questionText: string;
   options: string[];
   correctAnswerIndex: number;
 }
 
-interface Quiz extends Document {
+interface Quiz{
+  _id: string; 
   lessonId: string;
   title: string;
   questions: Question[];
@@ -21,94 +22,80 @@ type QuizPageProps = {
   params: {
     lessonId: string;
   };
-};
+}
 
 export default function QuizPage({ params }: QuizPageProps) {
+
+  // some error popping up about unwrapping params with React.use()
+  const lessonId = params.lessonId
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Fetch quiz data
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const res = await fetch(
-          `/api/quiz?lessonId=${params.lessonId}`,
-          { cache: "no-store" }
-        );
-
-        if (!res.ok) {
-          console.error("Failed to fetch quiz, status:", res.status);
-          setIsLoading(false);
-          return;
-        }
-
-        const quizData = await res.json();
+        const quizData = await getQuizByLessonId(lessonId);
         setQuiz(quizData);
-        setSelectedAnswers(new Array(quizData.questions.length).fill(-1));
-        setIsLoading(false);
+        setSelectedAnswers(new Array(quizData.questions.length).fill(-1)); // Initialize with -1 (no answer selected)
+        
       } catch (error) {
-        console.error("Failed to fetch quiz:", error);
+        setError(error instanceof Error ? error.message : "An unexpected error occurred");
+      } finally{
         setIsLoading(false);
       }
     };
 
     fetchQuiz();
-  }, [params.lessonId]);
+  }, [lessonId]);
 
   const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
-    setSelectedAnswers(prev => {
-      const newAnswers = [...prev];
-      newAnswers[questionIndex] = answerIndex;
-      return newAnswers;
-    });
+    setSelectedAnswers((prev) => {
+    const newAnswers = [...prev];
+    newAnswers[questionIndex] = answerIndex;
+    return newAnswers;
+  });
   };
-
   const handleSubmit = async () => {
     if (!quiz) return;
-    
-    // Calculate score
+
+    // calculating score 
     const totalQuestions = quiz.questions.length;
     let correctAnswers = 0;
-    
+
     quiz.questions.forEach((question, index) => {
       if (selectedAnswers[index] === question.correctAnswerIndex) {
         correctAnswers++;
       }
-    });
-    
+    })
     const calculatedScore = Math.round((correctAnswers / totalQuestions) * 100);
     setScore(calculatedScore);
     setIsSubmitted(true);
-    
-    // Save result to database
-    try {
-      const response = await fetch('/api/results', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          lessonId: params.lessonId,
-          quizId: quiz._id,
-          score: calculatedScore,
-          answers: selectedAnswers,
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save quiz result');
-      }
-    } catch (error) {
-      console.error('Error saving quiz result:', error);
-    }
-  };
 
+    // save results
+    const formData = new FormData();
+    formData.append("lessonId", lessonId);
+    formData.append("quizId", quiz._id.toString());
+    formData.append("score", calculatedScore.toString());
+    formData.append("answers", JSON.stringify(selectedAnswers));
+    try {
+      await saveQuizResult(formData);
+    } catch (error) {
+      console.error("Error saving quiz result:", error);
+    }
+
+
+  }
   if (isLoading) {
     return <div className="flex justify-center items-center min-h-screen">Loading quiz...</div>;
+  }
+
+  if (error) {
+    return <div className="flex justify-center items-center min-h-screen text-red-500">{error}</div>;
   }
 
   if (!quiz) {
@@ -172,5 +159,7 @@ export default function QuizPage({ params }: QuizPageProps) {
         </div>
       )}
     </div>
-  );
-}
+  )
+  
+
+};

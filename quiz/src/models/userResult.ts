@@ -29,7 +29,8 @@ const userResultSchema = new mongoose.Schema({
     default: Date.now
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'userresults'
 });
 
 const UserResult = mongoose.models.UserResult || mongoose.model('UserResult', userResultSchema);

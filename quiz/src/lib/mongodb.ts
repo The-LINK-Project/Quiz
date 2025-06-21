@@ -16,7 +16,7 @@ export const connectToDatabase = async () => {
 
     // connect to cached connection OR create a new connection
     cached.promise = cached.promise || mongoose.connect(MONGODB_URI, {
-        dbName: 'The Link Project',
+        dbName: 'Users',
         // bufferCommands: false,
     })
 
