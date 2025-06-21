@@ -15,13 +15,10 @@ export async function getQuizByLessonId(lessonId:string){
     if (!quiz) {
       throw new Error("Quiz not found for this lesson")
     }
-    const plainQuiz = quiz.toObject();
+    // Alternative quick fix with JSON serialization
+    const safeQuiz = JSON.parse(JSON.stringify(quiz));
 
-    return {
-      ...plainQuiz,
-      _id: plainQuiz._id.toString(),
-      lessonId: plainQuiz.lessonId.toString()
-    }
+    return safeQuiz;
 
   }catch (error) {
     console.error("Error fetching quiz:", error);

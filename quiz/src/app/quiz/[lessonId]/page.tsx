@@ -1,33 +1,33 @@
 'use client';
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";  // Add the use import
 import { useRouter } from "next/navigation";
 import { getQuizByLessonId } from "@/lib/actions/quizActions";
 import { saveQuizResult } from "@/lib/actions/resultsActions";
-import type {Document} from "mongoose";
 
-interface Question{
+interface Question {
   questionText: string;
   options: string[];
   correctAnswerIndex: number;
 }
 
-interface Quiz{
+interface Quiz {
   _id: string; 
   lessonId: string;
   title: string;
   questions: Question[];
 }
 
+// Updated type to handle both current and future implementations
 type QuizPageProps = {
-  params: {
-    lessonId: string;
-  };
-}
+  params: { lessonId: string } | Promise<{ lessonId: string }>;
+};
 
 export default function QuizPage({ params }: QuizPageProps) {
-
-  // some error popping up about unwrapping params with React.use()
-  const lessonId = params.lessonId
+  // Hybrid approach that works with both current and future Next.js
+  const lessonId = params instanceof Promise 
+    ? use(params).lessonId 
+    : params.lessonId;
+  
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -41,11 +41,10 @@ export default function QuizPage({ params }: QuizPageProps) {
       try {
         const quizData = await getQuizByLessonId(lessonId);
         setQuiz(quizData);
-        setSelectedAnswers(new Array(quizData.questions.length).fill(-1)); // Initialize with -1 (no answer selected)
-        
+        setSelectedAnswers(new Array(quizData.questions.length).fill(-1));
       } catch (error) {
         setError(error instanceof Error ? error.message : "An unexpected error occurred");
-      } finally{
+      } finally {
         setIsLoading(false);
       }
     };

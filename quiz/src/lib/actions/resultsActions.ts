@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache"
 import connectToDatabase from "../mongodb"
 import UserResult from "@/models/userResult"
 import mongoose from "mongoose"
+import Lesson from "@/models/lesson"
 
 const TEST_USER_ID = new mongoose.Types.ObjectId("000000000000000000000001");
 // submitting and sending over the quiz results to mongodb
@@ -45,7 +46,7 @@ export async function getUserResults(lessonId?: string) {
       query.lessonId = new mongoose.Types.ObjectId(lessonId);
     }
 
-    const results = await UserResult.find(query).populate("lessonId quizId").sort({ completedAt: -1 });
+    const results = await UserResult.find(query).populate("quizId").sort({ completedAt: -1 });
     return results;
   } catch (error) {
     console.error("Error fetching user results:", error);
