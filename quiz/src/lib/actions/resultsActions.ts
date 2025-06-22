@@ -19,6 +19,13 @@ export async function saveQuizResult(formData: FormData){
     if (!lessonId || !quizId || isNaN(score) || !answers) {
       throw new Error("Missing required fields");
     }
+    if (!mongoose.Types.ObjectId.isValid(lessonId) || !mongoose.Types.ObjectId.isValid(quizId)) {
+      throw new Error("Invalid ID format");
+    }
+    if (isNaN(score) || score < 0 || score > 100) {
+      throw new Error("Score must be a number between 0 and 100");
+    }
+
     const result = await UserResult.create({
       userId: TEST_USER_ID,
       lessonId: new mongoose.Types.ObjectId(lessonId),
@@ -27,13 +34,19 @@ export async function saveQuizResult(formData: FormData){
       answers
     });
     revalidatePath("/results");
-    return result;
-
-
+    return {
+      success:true,
+      id: result._id.toString(),
+      score: result.score,
+      message: "Quiz result saved successfully"
+    };
     
   } catch (error) {
     console.error("Error saving quiz result:", error);
-    throw error;
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "An unexpected error occurred"
+    };
   }
 }
 
@@ -47,7 +60,30 @@ export async function getUserResults(lessonId?: string) {
     }
 
     const results = await UserResult.find(query).populate("quizId").sort({ completedAt: -1 });
-    return results;
+    
+    // Add proper null checks to handle cases where quizId might be null
+    const serializedResults = results.map(result => {
+      const plainResult = result.toObject();
+      return {
+        ...plainResult,
+        _id: plainResult._id.toString(),
+        userId: plainResult.userId.toString(),
+        lessonId: plainResult.lessonId.toString(),
+        
+        // Fix this part with proper null checking
+        quizId: plainResult.quizId 
+          ? (plainResult.quizId._id 
+              ? { ...plainResult.quizId, _id: plainResult.quizId._id.toString() } 
+              : plainResult.quizId.toString())
+          : null,
+          
+        createdAt: plainResult.createdAt ? plainResult.createdAt.toISOString() : undefined,
+        updatedAt: plainResult.updatedAt ? plainResult.updatedAt.toISOString() : undefined,
+        completedAt: plainResult.completedAt ? plainResult.completedAt.toISOString() : undefined
+      };
+    });
+    
+    return serializedResults;
   } catch (error) {
     console.error("Error fetching user results:", error);
     throw error;

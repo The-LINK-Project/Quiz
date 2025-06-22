@@ -106,7 +106,9 @@ export default function QuizPage({ params }: QuizPageProps) {
       <h1 className="text-2xl font-bold mb-6">{quiz.title}</h1>
       
       {!isSubmitted ? (
+        // this part displays the quiz questions and options
         <>
+
           {quiz.questions.map((q, qIndex) => (
             <div key={qIndex} className="mb-8 p-4 border rounded-lg shadow-sm">
               <p className="font-medium mb-4">{q.questionText}</p>
@@ -141,6 +143,7 @@ export default function QuizPage({ params }: QuizPageProps) {
           </button>
         </>
       ) : (
+        // ruhan this part displays that mini results page after submission
         <div className="text-center p-8 border rounded-lg">
           <h2 className="text-2xl font-bold mb-4">Quiz Results</h2>
           <p className="text-4xl font-bold mb-6">{score}%</p>
